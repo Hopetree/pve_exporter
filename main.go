@@ -67,6 +67,7 @@ func extractTctlTemperature(input string) (float64, error) {
 	return 0, fmt.Errorf("no Tctl temperature found")
 }
 
+// recordMetrics 可以每个指标一个单独的 Goroutine 来采集
 func recordMetrics() {
 	go func() {
 		for {
