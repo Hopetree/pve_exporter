@@ -18,11 +18,16 @@ var (
 		Name: "cpu_temperature_celsius",
 		Help: "Current temperature of the CPU in degrees Celsius",
 	})
+	powerUsage = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "power_usage_watts",
+		Help: "Current power usage in watts",
+	})
 )
 
 func init() {
 	// 注册 CPU 温度指标
 	prometheus.MustRegister(cpuTemperature)
+	prometheus.MustRegister(powerUsage)
 }
 
 // executeCommand 执行给定的 shell 命令并返回执行结果
@@ -45,44 +50,44 @@ func executeCommand(cmd string) (string, error) {
 	return out.String(), nil
 }
 
-// extractTctlTemperature 从输入字符串中提取Tctl温度信息并转换为浮点数
-func extractTctlTemperature(input string) (float64, error) {
-	// 定义匹配 Tctl 温度信息的正则表达式
-	re := regexp.MustCompile(`Tctl:\s*\+([0-9.]+)°C`)
+// extractTctlTemperature 使用正则提取信息
+func extractTctlTemperature(input, pattern string) (string, error) {
+	// 定义匹配
+	// re := regexp.MustCompile(`Tctl:\s*\+([0-9.]+)°C`)
+	re := regexp.MustCompile(pattern)
 
 	// 查找匹配项
 	match := re.FindStringSubmatch(input)
 
 	// 如果找到匹配项，返回第一个捕获组的内容，即温度值
 	if len(match) > 1 {
-		temperatureStr := match[1]
-		temperature, err := strconv.ParseFloat(temperatureStr, 64)
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert temperature to float: %v", err)
-		}
-		return temperature, nil
+		str := match[1]
+		return str, nil
 	}
 
 	// 如果没有找到匹配项，返回错误
-	return 0, fmt.Errorf("no Tctl temperature found")
+	return "", fmt.Errorf("no Tctl temperature found")
 }
 
 // recordMetrics 可以每个指标一个单独的 Goroutine 来采集
 func recordMetrics() {
 	go func() {
 		for {
-			var temperature float64
+			var temperature, power float64
 
 			output, err := executeCommand("sensors")
 			if err != nil {
 				fmt.Println(err)
 			}
 
-			temperature, err = extractTctlTemperature(output)
-			if err != nil {
-				fmt.Println(err)
-			}
+			temperatureStr, err := extractTctlTemperature(output, `Tctl:\s*\+([0-9.]+)°C`)
+			powerStr, err := extractTctlTemperature(output, `PPT:\s*([0-9.]+)\s*W`)
+
+			temperature, err = strconv.ParseFloat(temperatureStr, 64)
+			power, err = strconv.ParseFloat(powerStr, 64)
+
 			cpuTemperature.Set(temperature)
+			powerUsage.Set(power)
 
 			// 休眠 10 秒
 			time.Sleep(10 * time.Second)
