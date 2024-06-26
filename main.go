@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// 定义一个全局变量，用于保存 CPU 温度指标
+// 将要注册的指标定义为全局变量
 var (
 	cpuTemperature = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "cpu_temperature_celsius",
@@ -50,23 +50,22 @@ func executeCommand(cmd string) (string, error) {
 	return out.String(), nil
 }
 
-// extractTctlTemperature 使用正则提取信息
-func extractTctlTemperature(input, pattern string) (string, error) {
+// getInfoByRegexp 使用正则提取信息
+func getInfoByRegexp(input, pattern string) (string, error) {
 	// 定义匹配
-	// re := regexp.MustCompile(`Tctl:\s*\+([0-9.]+)°C`)
 	re := regexp.MustCompile(pattern)
 
 	// 查找匹配项
 	match := re.FindStringSubmatch(input)
 
-	// 如果找到匹配项，返回第一个捕获组的内容，即温度值
+	// 如果找到匹配项，返回第一个捕获组的内容
 	if len(match) > 1 {
 		str := match[1]
 		return str, nil
 	}
 
 	// 如果没有找到匹配项，返回错误
-	return "", fmt.Errorf("no Tctl temperature found")
+	return "", fmt.Errorf("no info found")
 }
 
 // recordMetrics 可以每个指标一个单独的 Goroutine 来采集
@@ -80,8 +79,8 @@ func recordMetrics() {
 				fmt.Println(err)
 			}
 
-			temperatureStr, err := extractTctlTemperature(output, `Tctl:\s*\+([0-9.]+)°C`)
-			powerStr, err := extractTctlTemperature(output, `PPT:\s*([0-9.]+)\s*W`)
+			temperatureStr, err := getInfoByRegexp(output, `Tctl:\s*\+([0-9.]+)°C`)
+			powerStr, err := getInfoByRegexp(output, `PPT:\s*([0-9.]+)\s*W`)
 
 			temperature, err = strconv.ParseFloat(temperatureStr, 64)
 			power, err = strconv.ParseFloat(powerStr, 64)
