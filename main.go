@@ -24,10 +24,13 @@ var (
 	})
 )
 
-func init() {
-	// 注册 CPU 温度指标
-	prometheus.MustRegister(cpuTemperature)
-	prometheus.MustRegister(powerUsage)
+func initCustomRegistry() *prometheus.Registry {
+	// 创建一个新的注册表
+	reg := prometheus.NewRegistry()
+	// 注册自定义指标
+	reg.MustRegister(cpuTemperature)
+	reg.MustRegister(powerUsage)
+	return reg
 }
 
 // executeCommand 执行给定的 shell 命令并返回执行结果
@@ -95,11 +98,14 @@ func recordMetrics() {
 }
 
 func main() {
+	// 创建自定义注册表并注册指标
+	reg := initCustomRegistry()
+
 	// 开始记录指标
 	recordMetrics()
 
-	// 暴露 /metrics 端点
-	http.Handle("/metrics", promhttp.Handler())
+	// 使用自定义注册表创建 HTTP 处理器
+	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	_ = http.ListenAndServe(":9010", nil)
 
 }
