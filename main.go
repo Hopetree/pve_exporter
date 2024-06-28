@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,6 +24,8 @@ var (
 		Help: "Current power usage in watts",
 	})
 )
+
+var addr = flag.String("listen-address", ":9010", "The address to listen on for HTTP requests.")
 
 func initCustomRegistry() *prometheus.Registry {
 	// 创建一个新的注册表
@@ -98,6 +101,7 @@ func recordMetrics() {
 }
 
 func main() {
+	flag.Parse()
 	// 创建自定义注册表并注册指标
 	reg := initCustomRegistry()
 
@@ -106,6 +110,6 @@ func main() {
 
 	// 使用自定义注册表创建 HTTP 处理器
 	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	_ = http.ListenAndServe(":9010", nil)
+	_ = http.ListenAndServe(*addr, nil)
 
 }
